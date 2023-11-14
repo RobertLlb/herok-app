@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="./styles.css">
+    <title>Chat - Microsoft Teams Style</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f0f0f0;
+        }
+
+        .chat-container {
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .chat-sidebar {
+            width: 300px;
+            background-color: #333;
+            color: #fff;
+            padding: 20px;
+            box-shadow: 1px 0px 5px rgba(0, 0, 0, 0.2);
+        }
+
+        .chat-sidebar h1 {
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+
+        .chat-sidebar ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .chat-sidebar li {
+            font-size: 18px;
+            margin-bottom: 10px;
+            cursor: pointer;
+        }
+
+        .chat-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background-color: #fff;
+            box-shadow: -1px 0px 5px rgba(0, 0, 0, 0.2);
+        }
+
+        .chat-header {
+            background-color: #0078d4;
+            color: #fff;
+            padding: 15px;
+            font-size: 24px;
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .chat-input {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            background-color: #f0f0f0;
+        }
+
+        .chat-input input {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            margin-right: 10px;
+        }
+
+        .chat-input button {
+            background-color: #0078d4;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .chat-input button:hover {
+            background-color: #005a9e;
+        }
+
+        /* Estilos para o formulário de autenticação */
+        .login-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f0f0f0;
+        }
+
+        .login-form {
+            text-align: center;
+        }
+
+        .login-form input {
+            padding: 10px;
+            margin: 5px;
+        }
+
+        .login-form button {
+            padding: 10px 20px;
+            background-color: #0078d4;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .login-form button:hover {
+            background-color: #005a9e;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="root"></div>
+    <div class="login-container">
+        <div class="login-form">
+            <h1>Faça login para acessar o chat</h1>
+            <input type="text" id="email" placeholder="E-mail">
+            <input type="password" id="senha" placeholder="Senha">
+            <button onclick="authenticate()">Login</button>
+        </div>
+    </div>
+    <div class="chat-container" style="display: none;">
+        <div class="chat-sidebar">
+            <h1>Equipes</h1>
+            <ul id="channel-list">
+                <!-- Canais serão dinamicamente adicionados aqui -->
+            </ul>
+
+            <div>
+                <input type="text" id="channel-name" placeholder="Nome do Canal">
+                <button onclick="createChannel()">Criar Canal</button>
+            </div>
+            <hr />
+            <div class="user-info">
+                <p id="user-name"></p>
+                <button id="logout-button">Logout</button>
+            </div>
+        </div>
+        <div class="chat-content">
+            <div class="chat-header">
+                <h2 id="current-channel">Canal 1</h2>
+            </div>
+            <div class="chat-messages">
+                <!-- As mensagens serão exibidas aqui -->
+            </div>
+            <div class="chat-input">
+                <input type="text" placeholder="Digite sua mensagem...">
+                <button>Enviar</button>
+            </div>
+        </div>
+    </div>
+
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+
+
+        // Função para autenticar o usuário
+        // Função para autenticar o usuário
+        function authenticate() {
+            const email = document.getElementById('email').value;
+            const senha = document.getElementById('senha').value;
+            const username = email.split('@')[0]; // Obter o nome de usuário a partir do e-mail
+
+            // Realize a autenticação do usuário e obtenha o token JWT
+            // Substitua o código abaixo pela lógica real de autenticação
+            fetch('/auth', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ email, senha })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    const { token } = data;
+                    if (token) {
+                        localStorage.setItem('token', token);
+                        // Esconder o formulário de login e exibir o chat
+                        document.querySelector('.login-container').style.display = 'none';
+                        document.querySelector('.chat-container').style.display = 'flex';
+                        // Exibir o nome do usuário logado
+                        newname = formatUsername(username)
+                        currentUsername = newname;
+                        const userName = document.getElementById('user-name');
+                        userName.textContent = `Usuário: ${newname}`;
+                        // Limpar os campos de e-mail e senha
+                        document.getElementById('email').value = '';
+                        document.getElementById('senha').value = '';
+
+                        // Enviar uma mensagem para o servidor Socket.io para notificar a conexão
+                        socket.emit('connection', newname);
+                    }
+                })
+                .catch(error => {
+                    console.error('Erro ao autenticar:', error);
+                });
+        }
+        // Variáveis para armazenar os nomes de usuário e nomes dos canais
+        let currentUsername = '';
+
+        // Verifique se há dados salvos no Local Storage
+        const savedChatData = localStorage.getItem('chatData');
+
+        // Declare uma variável para armazenar os dados do chat
+        let chatData;
+
+        // Verifique se savedChatData não é nulo ou indefinido
+        if (savedChatData) {
+            // Se houver dados salvos, converta-os de JSON para um objeto
+            chatData = JSON.parse(savedChatData);
+        } else {
+            // Caso contrário, defina a variável chatData como um objeto vazio
+            chatData = {
+                channels: [],
+                messages: {},
+                login: {
+                    email: '',
+                    token: ''
+                }
+            };
+        }
+        // Verifique se há canais salvos no Local Storage
+        const savedChannels = localStorage.getItem('channels');
+
+        // Declare uma variável para armazenar os canais
+        let channels;
+
+        // Verifique se savedChannels não é nulo ou indefinido
+        if (savedChannels) {
+            // Se houver canais salvos, converta-os de JSON para um array
+            channels = JSON.parse(savedChannels);
+        } else {
+            // Caso contrário, defina a variável channels como um array vazio
+            channels = [];
+        }
+
+        // Função para criar um novo canal
+        function createChannel() {
+            const channelName = document.getElementById('channel-name').value;
+            if (channelName) {
+                channels.push(channelName);
+                localStorage.setItem('channels', JSON.stringify(channels)); // Salvar canais no armazenamento local
+                updateChannelList();
+                document.getElementById('channel-name').value = '';
+            }
+        }
+
+        // Função para atualizar a lista de canais na barra lateral
+        function updateChannelList() {
+            const channelList = document.getElementById('channel-list');
+            channelList.innerHTML = '';
+            channels.forEach(channel => {
+                const li = document.createElement('li');
+                li.textContent = channel;
+                li.onclick = () => {
+                    setCurrentChannel(channel);
+                };
+                channelList.appendChild(li);
+            });
+        }
+
+        // Função para definir o canal atual
+        function setCurrentChannel(channel) {
+            const currentChannel = document.getElementById('current-channel');
+            currentChannel.textContent = channel;
+            localStorage.setItem('currentChannel', channel); // Salvar o canal atual no armazenamento local
+        }
+
+        // Função para carregar os canais e o canal atual do armazenamento local
+        function loadChannelsAndCurrentChannel() {
+
+            const savedChannels = localStorage.getItem('channels');
+            console.log("savedChannels", savedChannels);
+            if (savedChannels) {
+                channels = JSON.parse(savedChannels);
+                updateChannelList();
+            }
+
+            const savedCurrentChannel = localStorage.getItem('currentChannel');
+            if (savedCurrentChannel) {
+                setCurrentChannel(savedCurrentChannel);
+            }
+        }
+        // Variável para controlar se o botão "Logout" foi clicado
+        let logoutClicked = false;
+
+        // Função para realizar o logout
+        function logout() {
+            // Verificar se o botão "Logout" foi clicado
+            if (logoutClicked) {
+                localStorage.removeItem('token');
+                window.location.reload();
+            }
+        }
+
+        // Lidar com o clique no botão "Logout"
+        document.getElementById('logout-button').addEventListener('click', () => {
+            logoutClicked = true;
+            logout();
+        });
+        // Função para formatar o nome do usuário
+        function formatUsername(username) {
+            const parts = username.split('.');
+            const formattedParts = parts.map(part => part.charAt(0).toUpperCase() + part.slice(1));
+            return formattedParts.join(' ');
+        }
+        const messageInput = document.querySelector('.chat-input input');
+
+
+
+
+        let typing = false;
+        let lastTypingTime;
+
+        messageInput.addEventListener('input', () => {
+            if (!typing) {
+                typing = true;
+                socket.emit('typing', document.getElementById('current-channel').textContent);
+            }
+
+            lastTypingTime = new Date().getTime();
+
+            setTimeout(() => {
+                const currentTime = new Date().getTime();
+                const timeDiff = currentTime - lastTypingTime;
+                if (timeDiff >= 1000 && typing) {
+                    socket.emit('stop typing');
+                    typing = false;
+                }
+            }, 1000);
+        });
+        // Ouça o evento "user connected" do servidor Socket.io
+        socket.on('connection', (username) => {
+            // Exiba uma mensagem no chat informando que o usuário se conectou
+            const chatMessages = document.querySelector('.chat-messages');
+            const userConnectedMessage = document.createElement('div');
+            userConnectedMessage.textContent = `${username} se conectou.`;
+            chatMessages.appendChild(userConnectedMessage);
+        });
+        socket.on('typing', (data) => {
+            const typingUser = data.user;
+            const typingMessage = `${typingUser} está digitando...`;
+            // Exibir a mensagem de quem está digitando no seu aplicativo
+        });
+
+        socket.on('stop typing', (data) => {
+            const typingUser = data.user;
+            // Remover a mensagem de quem parou de digitar no seu aplicativo
+        });
+
+        // Chame a função para carregar os dados ao iniciar a página
+        loadChannelsAndCurrentChannel();
+    </script>
+    <script src="/bundle.js"></script>
+
+</html>
